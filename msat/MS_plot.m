@@ -34,9 +34,15 @@
 %          for blue to be fast/high as is conventional for seismic velocity 
 %          colorscales. Setting this option results in red being fast/high.
 %
-%     MS_plot(..., 'stereo')
-%          Use an angle preserving stereographic projection instead of the
-%          default spherical projection. 
+%     MS_plot(..., 'projection',P)
+%          Set the projection of the pole figure to that specified in P.
+%          Currently supported options are: 
+%          'sphere' : Spherical projection (default).
+%          'angle'  : An angle preserving stereographic projection.
+%          'area'   : Lambert area preserving projection. 
+%
+%     MS_plot(..., 'lower')
+%          Plot the lower hemisphere rather than the upper hemisphere.
 %
 %     MS_plot(..., 'pcontours', pcvect)
 %     MS_plot(..., 'avscontours', ascvect)
@@ -152,8 +158,11 @@ function MS_plot(C,rh,varargin)
 %  ** configure font options
       fntsz = 12;
 
-%  ** set stereographic projection
-      istereo = 0 ;
+%  ** set default projection
+      projection = 'sphere' ;
+
+%  ** set lower hemisphere (upper hemisphere is default)
+      ilower = 0 ;      
 
 %  ** configure colormap options
       cmap = jet(64) ;
@@ -174,8 +183,11 @@ function MS_plot(C,rh,varargin)
       iarg = 1 ;
       while iarg <= (length(varargin))
          switch lower(varargin{iarg})
-            case 'stereo'
-               istereo = 1 ;
+            case 'projection'
+               projection = varargin{iarg+1} ;
+               iarg = iarg + 2 ;
+            case 'lower'
+               ilower = 1 ;
                iarg = iarg + 1 ;
             case 'reverse'
                icmapflip = 0 ;
@@ -294,8 +306,12 @@ function MS_plot(C,rh,varargin)
       deg = 180./pi ;
       
       % Set up inc-az grids...
-      [INC,AZ] = meshgrid([90:-6:0],[0:6:360]) ;
-      
+      if ilower
+        [INC,AZ] = meshgrid([-90:6:0],[0:6:360]) ;
+      else
+        [INC,AZ] = meshgrid([90:-6:0],[0:6:360]) ;
+      end  
+
       % Invoke MS_phasevels to get wave velocities etc.
       [~,~,vs1,vs2,vp, S1P] = MS_phasevels(C,rh,...
         reshape(INC,61*16,1),reshape(AZ,61*16,1));
@@ -343,14 +359,7 @@ function MS_plot(C,rh,varargin)
 
 
 %  ** if required, apply stereographic transform
-      if istereo
-         XS=X./(1+Z) ;
-         YS=Y./(1+Z) ;
-         X=XS;
-         Y=YS;
-      end   
-
-
+      [X,Y]=apply_projection(X,Y,Z,projection,ilower) ;
 
       k = 0;
       for j = 1:nrow;
@@ -444,11 +453,11 @@ function MS_plot(C,rh,varargin)
                       
                       pol_pole(VS1_x,VS1_y,VS1_z, X, Y, Z, AZ, INC, ...
                           qwhite_scale, qblack_scale, qwhite_width, ...
-                          qblack_width, istereo);
+                          qblack_width, projection);
                       
                       if sdata_plot
                           add_data(sdata_azi, sdata_inc, sdata_pol, ...
-                              sdata_mag, 1, istereo);
+                              sdata_mag, 1, projection, ilower);
                       end
                       
                   otherwise
@@ -528,7 +537,7 @@ end
    end
 %===============================================================================
 
-function add_data(data_azi, data_inc, data_pol, data_mag, with_pol, istereo)
+function add_data(data_azi, data_inc, data_pol, data_mag, with_pol, projection, ilower)
 
     % Get data points as XYZ
     % reverse so sph2cart() works properly
@@ -537,13 +546,9 @@ function add_data(data_azi, data_inc, data_pol, data_mag, with_pol, istereo)
     % Data points
     [X,Y,Z] = sph2cart(data_azi.*rad, data_inc.*rad, ones(size(data_azi)));
     
-    if istereo
-       XS=X./(1+Z) ;
-       YS=Y./(1+Z) ;
-       X=XS;
-       Y=YS;
-    end   
 
+    % if required, apply stereographic transform
+    [X,Y]=apply_projection(X,Y,Z,projection,ilower) ;
 
     if with_pol
         % Vectors in ray frame:
@@ -661,7 +666,7 @@ function [VALmin, VALmax] = max_min_pole(AZ, INC, VAL)
 end
 
 function pol_pole(V_x,V_y,V_z, X, Y, Z, AZ, INC, ...
-          qwhite_scale, qblack_scale, qwhite_width, qblack_width, istereo)
+          qwhite_scale, qblack_scale, qwhite_width, qblack_width, projection)
       
 %  ** transform vectors
       [V_x,V_y,V_z] = vnormalise2(V_x,V_y,V_z) ;
@@ -687,16 +692,20 @@ function pol_pole(V_x,V_y,V_z, X, Y, Z, AZ, INC, ...
       
       [VR_x,VR_y,VR_z] = vnormalise2(VR_x,VR_y,VR_z) ;
  
-%  ** define subset of polarisations to plot (stereographic uses a
-%     different set)     
-      if istereo
-        cl = [  1  3  5  7  9 11 12 13 14 15  16] ;
-        drw = [60 10  5  3  2  2  2  2  2 2  2] ;
-        np=260 ;
-      else
+%  ** define subset of polarisations to plot
+      switch lower(projection)
+      case 'sphere'
         cl =  [  1  3  5  7  9 11 15 ] ;
         drw = [ 60 10  5  3  2  2  2 ] ;
         np=136 ;
+      case 'angle'           
+        cl = [  1  3  5  7  9 11 12 13 14 15  16] ;
+        drw = [60 10  5  3  2  2  2  2  2 2  2] ;
+        np=260 ;
+      case 'area'
+        cl = [  1  2  4  6  8 10 12 14 16] ;
+        drw = [60 20  5  3  2  2  2  2  2] ;
+        np=195 ;        
       end
 
       ii=0 ;
@@ -774,4 +783,26 @@ function [VR] = V_rot_bet(V,bet)
 
     VR = V * RR ;
  
+end
+
+function [XP,YP]=apply_projection(X,Y,Z,projection,ilower)
+%
+% Function to apply projections to the polefigure.
+%
+   lsign = (ilower*2)-1 ;
+
+   switch lower(projection)
+   case 'sphere'
+      XP=X ;
+      YP=Y ;
+   case 'angle'
+      XP=X./(1-lsign*Z) ;
+      YP=Y./(1-lsign*Z) ;        
+   case 'area'        
+      XP = (sqrt(2./(1-lsign*Z)).*X)./sqrt(2) ;
+      YP = (sqrt(2./(1-lsign*Z)).*Y)./sqrt(2) ;
+   otherwise
+      error(['Unknown projection: ' projection])
+   end   
+
 end
