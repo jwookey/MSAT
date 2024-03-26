@@ -47,6 +47,8 @@ function lmm_anisotropy()
 %  ** plot each of the derived properties on a globe
       plot_cprop(LON,LAT,Cani,[0 0.1],'Universal Elastic Anisotropy Index') ;
       plot_cprop(LON,LAT,PercH,[0 1.0],'Proportion of Hexagonality') ;
+      fprintf('Note: Refer to the accompanying file PoH.png rather than Walker\n') 
+      fprintf('      and Wookey (2012) Fig. 2b for the correct PoH plot.\n')
 
 end
 
