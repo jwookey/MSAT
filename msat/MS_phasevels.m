@@ -13,9 +13,9 @@
 %         an inclination and azimuth (both in degrees, see below). Output 
 %         details are given below.
 %
-%     [ pol, avs, vs1, vs2, vp, SF, SS ] = MS_phasevels( C, rh, inc, azi )                    
-%         Additionally output fast and slow S-wave polarisation in vector
-%         form.
+%     [ pol, avs, vs1, vs2, vp, SF, SS, PP ] = MS_phasevels( C, rh, inc, azi )                    
+%         Additionally output fast and slow S-wave, and P-wave, polarisation 
+%         in vector form.
 %
 % Notes:
 %     Azi is defined as the angle in degrees from the +ve 1-axis in x1-x2 
@@ -83,7 +83,7 @@
 % OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS 
 % SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-function [pol,avs,vs1,vs2,vp, S1P, S2P] = MS_phasevels(C,rh,inc,azi)
+function [pol,avs,vs1,vs2,vp, S1P, S2P, PP] = MS_phasevels(C,rh,inc,azi)
 
       if (length(inc)~=length(azi))
 			error('MS:ListsMustMatch', ...
@@ -112,6 +112,7 @@ function [pol,avs,vs1,vs2,vp, S1P, S2P] = MS_phasevels(C,rh,inc,azi)
 		S1 = zeros(length(azi),3) ;
 		S1P = zeros(length(azi),3) ;
       S2P = zeros(length(azi),3) ;
+      PP = zeros(length(azi),3) ;
         
 %   ** Handle isotropic case quickly
      if isIsotropic(C, isotol)
@@ -121,7 +122,8 @@ function [pol,avs,vs1,vs2,vp, S1P, S2P] = MS_phasevels(C,rh,inc,azi)
          vs2 = vs1;                     % Mbar to Pa.
          avs(:) = 0.0;
          pol(:) = NaN; % Both waves have same velocity... meaningless.
-         S1P(:) = NaN;
+         S1P(:) = NaN ;
+         PP(:) = NaN ;
          return
      end
 
@@ -138,6 +140,9 @@ function [pol,avs,vs1,vs2,vp, S1P, S2P] = MS_phasevels(C,rh,inc,azi)
 		
 %  ** pull out the eigenvectors
       P  = EIGVEC(:,1) ;
+        
+      PP(ipair,:) = P ;
+
       S1 = EIGVEC(:,2) ;
 
   		if ~isreal(S1)

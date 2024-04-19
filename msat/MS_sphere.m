@@ -12,7 +12,8 @@
 %     MS_sphere(CC,rh,mode)                    
 %         Mode can be 'p'(-wave), 's'(-wave), 's1' (fast s-wave) or 's2'
 %         (slow s-wave) for velocity plots or 'slowP','slowS1' or 'slowS2'
-%         for slowness plots (slowness is the inverse of velocity).
+%         for slowness plots (slowness is the inverse of velocity). 'pp'
+%         mode plots p-wave polarisation vectors.
 %
 %     MS_sphere(CC,rh,mode,...) 
 %          Further arguments are optional, can be combined in any order and
@@ -36,11 +37,11 @@
 %          coloured spots. 
 %
 %     MS_sphere(..., 'FSWTickLength', length)
-%          Set the length of the Fast shear wave direction markers, default
-%          is 0.08.
+%          Set the length of the shear wave direction / p-wave polarisations
+%          markers, default is 0.08.
 %
 %     MS_sphere(..., 'FSWMarkerSize', length)
-%          Set the size of the Fast shear wave direction markers, default
+%          Set the size of the direction markers, default
 %          is 4.
 %
 %     MS_sphere(..., 'cmap', CM)                    
@@ -231,7 +232,7 @@ else
 end
 
 if ischar(mode)
-   if sum(strcmpi({'p','s', 's1', 's2', 'slowp', 'slows1', 'slows2'},mode))~=1
+   if sum(strcmpi({'p','s', 's1', 's2', 'slowp', 'slows1', 'slows2','pp'},mode))~=1
       error('MS:SPHERE:badmode', ...
           'Mode must be ''S''(-wave), ''S1'', ''S2'', or ''P''(-wave) ')
    end
@@ -246,7 +247,7 @@ if mod(length(dirs),2)~=0
 end
 
 % check data overlay
-if iplot_pdata & ~strcmpi(mode,'p')
+if iplot_pdata & sum(strcmpi(mode,{'p','pp'}))==0
    error('MS:SPHERE:badpoverlay', 'P-wave data can only overlay a ''P'' mode plot.') ;
 end
 
@@ -275,7 +276,7 @@ end
 
 [~,avs,vs1,vs2,vp] = MS_phasevels(CC,rh,inc,az) ;
 
-if strcmpi(mode,'p')
+if sum(strcmpi(mode,{'p','pp'}))
    trisurf(faces,x,y,z,vp) ;
 elseif strcmpi(mode,'s1')
    trisurf(faces,x,y,z,vs1) ;
@@ -317,8 +318,8 @@ hold on
 
 if ~isnan(cax), caxis(cax), end
 
-% plot the shear-wave polarisation
-if sum(strcmpi({'s','s1','s2','slows1','slows2'},mode))==1 
+% plot the shear- or p-wave polarisation 
+if sum(strcmpi({'s','s1','s2','slows1','slows2','pp'},mode))==1 
    [x, y, z, ~, az, inc] =  get_mesh(polmesh);
 
 %  find the closest points to each specified direction   
@@ -335,7 +336,7 @@ if sum(strcmpi({'s','s1','s2','slows1','slows2'},mode))==1
       inc(ind) = din(idir)*180/pi ;
    end
    
-   [~,avs,vs1,vs2,vp, SF, SS] = MS_phasevels(CC,rh,inc,az) ;
+   [~,avs,vs1,vs2,vp, SF, SS, PP] = MS_phasevels(CC,rh,inc,az) ;
    % calculate PM vectors
    nv = length(x) ;
    if sum(strcmpi(mode,{'s','s1','slows1'}))==1 
@@ -352,6 +353,14 @@ if sum(strcmpi({'s','s1','s2','slows1','slows2'},mode))==1
 		  end          
           X1 = XI-FSWTickLength.*SF(iv,:);
           X2 = XI+FSWTickLength.*SF(iv,:);
+          plot3(XI(1),XI(2),XI(3),'ko','MarkerSize',FSWMarkerSize,'MarkerFaceColor','k')
+          plot3([X1(1) X2(1)],[X1(2) X2(2)],[X1(3) X2(3)],'k-','LineWidth',(FSWMarkerSize/2))
+      end
+   elseif strcmpi(mode, 'pp')
+      for iv=1:nv
+          XI=[x(iv) y(iv) z(iv)] ;
+          X1 = XI - FSWTickLength.*PP(iv,:) ;
+          X2 = XI + FSWTickLength.*PP(iv,:) ;
           plot3(XI(1),XI(2),XI(3),'ko','MarkerSize',FSWMarkerSize,'MarkerFaceColor','k')
           plot3([X1(1) X2(1)],[X1(2) X2(2)],[X1(3) X2(3)],'k-','LineWidth',(FSWMarkerSize/2))
       end
